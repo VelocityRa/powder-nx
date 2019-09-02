@@ -29,7 +29,7 @@
 #include <climits>
 #include "common/tpt-inline.h"
 
-#if defined(LIN) || defined(USE_STDINT)
+#if defined(LIN) || defined(SWITCH) || defined(USE_STDINT)
 #include <sys/types.h>
 #include <cstdint>
 #else

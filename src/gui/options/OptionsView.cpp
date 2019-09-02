@@ -215,6 +215,8 @@ OptionsView::OptionsView():
 	tmpSeparator = new Separator(ui::Point(0, currentY), ui::Point(Size.X, 1));
 	scrollPanel->AddChild(tmpSeparator);
 
+#if !defined(SWITCH)
+
 	class ScaleAction: public ui::DropDownAction
 	{
 		OptionsView * v;
@@ -357,6 +359,8 @@ OptionsView::OptionsView():
 	scrollPanel->AddChild(tempLabel);
 	scrollPanel->AddChild(fastquit);
 
+#endif
+
 	class ShowAvatarsAction: public ui::CheckboxAction
 	{
 		OptionsView * v;
@@ -417,6 +421,8 @@ OptionsView::OptionsView():
 	scrollPanel->AddChild(tempLabel);
 	scrollPanel->AddChild(includePressure);
 
+#if !defined(SWITCH)
+
 	class DataFolderAction: public ui::ButtonAction
 	{
 	public:
@@ -467,6 +473,8 @@ OptionsView::OptionsView():
 	SetOkayButton(tempButton);
 	currentY+=20;
 	scrollPanel->InnerSize = ui::Point(Size.X, currentY);
+
+#endif
 }
 
 void OptionsView::NotifySettingsChanged(OptionsModel * sender)

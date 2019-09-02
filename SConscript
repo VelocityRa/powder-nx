@@ -41,6 +41,7 @@ def AddSconsOption(name, default, hasArgs, help):
 AddSconsOption('win', False, False, "Target Windows.")
 AddSconsOption('lin', False, False, "Target Linux.")
 AddSconsOption('mac', False, False, "Target Mac OS X.")
+AddSconsOption('switch', False, False, "Target Nintendo Switch.")
 AddSconsOption('msvc', False, False, "Use the Microsoft Visual Studio compiler.")
 AddSconsOption("tool", False, True, "Tool prefix appended before gcc/g++.")
 
@@ -89,7 +90,10 @@ elif GetOption('lin'):
 	platform = "Linux"
 elif GetOption('mac'):
 	platform = "Darwin"
-elif compilePlatform not in ["Linux", "Windows", "Darwin", "FreeBSD"]:
+elif GetOption('switch'):
+	platform = "Switch"
+	isX86 = False
+elif compilePlatform not in ["Linux", "Windows", "Darwin", "FreeBSD", "Switch"]:
 	FatalError("Unknown platform: {0}".format(platform))
 
 msvc = GetOption('msvc')
@@ -128,6 +132,23 @@ if tool:
 	env['STRIP'] = tool+'strip'
 	if os.path.isdir("/usr/{0}/bin".format(tool[:-1])):
 		env['ENV']['PATH'] = "/usr/{0}/bin:{1}".format(tool[:-1], os.environ['PATH'])
+
+if platform == "Switch":
+	# Import toolchain paths
+	dkp = os.environ.get("DEVKITPRO")
+	env['ENV']['DEVKITPRO'] = dkp
+	updated_path = os.environ['PATH'] + ":{}/portlibs/switch/bin:{}/devkitA64/bin".format(dkp, dkp)
+	env['ENV']['PATH'] = updated_path
+	os.environ['PATH'] = updated_path  # os environment has to be updated for subprocess calls
+
+try:
+	env.ParseConfig('sdl2-config --cflags')
+	if GetOption('static'):
+		env.ParseConfig('sdl2-config --static-libs')
+	else:
+		env.ParseConfig('sdl2-config --libs')
+except:
+	pass
 
 #copy environment variables because scons doesn't do this by default
 for var in ["CC","CXX","LD","LIBPATH","STRIP"]:
@@ -430,12 +451,23 @@ elif platform == "Darwin":
 	#env.Append(LINKFLAGS=['-headerpad_max_install_names']) #needed in some cross compiles
 	if GetOption('luajit'):
 		env.Append(LINKFLAGS=['-pagezero_size', '10000', '-image_base', '100000000'])
+elif platform == "Switch":
+	env.Append(CPPDEFINES=['SWITCH', '__SWITCH__'])
 
+	arch = ["-march=armv8-a", "-mtune=cortex-a57", "-mtp=soft", "-fPIE"]
+	env.Prepend(CCFLAGS=arch + ['-ffunction-sections'])
+
+	env.Prepend(CPPPATH=['{}/portlibs/switch/include'.format(dkp)])
+	env.Prepend(CPPFLAGS=['-isystem', '{}/libnx/include'.format(dkp)])
+	env.Prepend(CPPFLAGS=['-D__SWITCH__', '-DPOSH_COMPILER_GCC', '-DPOSH_OS_HORIZON', '-DPOSH_OS_STRING=\\"horizon\\"'])
+
+	env.Append(LIBPATH=['{}/portlibs/switch/lib'.format(dkp), '{}/libnx/lib'.format(dkp)])
+	env.Prepend(LINKFLAGS=arch + ['-specs={}/libnx/switch.specs'.format(dkp)])
 
 #Add architecture flags and defines
 if isX86:
 	env.Append(CPPDEFINES='X86')
-if not GetOption('no-sse'):
+if isX86 and not GetOption('no-sse'):
 	if GetOption('sse'):
 		if msvc:
 			if not GetOption('sse2'):
@@ -457,7 +489,6 @@ if not GetOption('no-sse'):
 		env.Append(CPPDEFINES=['X86_SSE3'])
 if GetOption('native') and not msvc:
 	env.Append(CCFLAGS=['-march=native'])
-
 
 #Add optimization flags and defines
 if GetOption('debugging'):
@@ -562,6 +593,11 @@ if platform == "Windows":
 #elif platform == "Darwin":
 #	sources += ["src/SDLMain.m"]
 
+# env.Append(CCPFLAGS=['-Wl,--start-group', '-lm', '-Wl,--end-group'])
+
+# Flags
+env.Append(LIBS=['mbedtls', 'mbedx509', 'mbedcrypto', 'z', 'curl', 'glad', 'EGL', 'glapi', 'drm_nouveau', 'nx', 'm'])
+# env.ParseConfig('aarch64-none-elf-pkg-config sdl2 --cflags --libs')
 
 #Program output name
 if GetOption('output'):
@@ -581,6 +617,8 @@ else:
 		programName += ".exe"
 	elif platform == "Darwin":
 		programName += "-x"
+	elif platform == "Switch":
+		programName += "-nx"
 
 #strip binary after compilation
 def strip():
@@ -602,3 +640,8 @@ env.Decider('MD5-timestamp')
 SetOption('implicit_cache', 1)
 t = env.Program(target=programName, source=sources)
 Default(t)
+
+# programName+=".nro"
+# env.Command("#" + programName, None, "/opt/devkitpro/tools/bin/elf2nro $SOURCE $TARGET")
+# env.Command("#" + programName + ".nso", t, "/opt/devkitpro/tools/bin/elf2nso $SOURCE $TARGET")
+# Default(t_nro)

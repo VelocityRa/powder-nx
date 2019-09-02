@@ -28,6 +28,10 @@
 // returns 1 on failure, 0 on success
 int update_start(char *data, unsigned int len)
 {
+#ifdef SWITCH
+	return 0;
+#endif
+
 	ByteString exeName = Platform::ExecutableName(), updName;
 	FILE *f;
 
@@ -96,6 +100,10 @@ int update_start(char *data, unsigned int len)
 // returns 1 on failure, 0 on success
 int update_finish()
 {
+#ifdef SWITCH
+	return 0;
+#endif
+
 #ifdef WIN
 	ByteString exeName = Platform::ExecutableName(), updName;
 	int timeout = 5, err;

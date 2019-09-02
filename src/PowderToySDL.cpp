@@ -143,11 +143,15 @@ void blit()
 #else
 void blit(pixel * vid)
 {
-	SDL_UpdateTexture(sdl_texture, NULL, vid, WINDOWW * sizeof (Uint32));
+	SDL_UpdateTexture(sdl_texture, NULL, vid, WINDOWW * sizeof(Uint32));
 	// need to clear the renderer if there are black edges (fullscreen, or resizable window)
 	if (fullscreen || resizable)
 		SDL_RenderClear(sdl_renderer);
-	SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, NULL);
+	SDL_Rect srcrect{};
+	SDL_Rect dstrect{};
+	dstrect.w = 1920;
+	dstrect.h = 1080;
+	SDL_RenderCopy(sdl_renderer, sdl_texture, NULL, &dstrect);
 	SDL_RenderPresent(sdl_renderer);
 }
 #endif
@@ -155,7 +159,11 @@ void blit(pixel * vid)
 void RecreateWindow();
 int SDLOpen()
 {
-	if (SDL_Init(SDL_INIT_VIDEO) < 0)
+	uint32_t init_flags = SDL_INIT_VIDEO;
+#ifdef SWITCH
+	init_flags |= SDL_INIT_JOYSTICK;
+#endif
+	if (SDL_Init(init_flags) < 0)
 	{
 		fprintf(stderr, "Initializing SDL: %s\n", SDL_GetError());
 		return 1;
@@ -251,10 +259,18 @@ void RecreateWindow()
 		SDL_DestroyWindow(sdl_window);
 	}
 
+#if defined(SWITCH)
+	sdl_window = SDL_CreateWindow("The Powder Toy", 0, 0, 1920, 1080, 0);
+#else
 	sdl_window = SDL_CreateWindow("The Powder Toy", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOWW * scale, WINDOWH * scale,
-	                              flags);
+                              flags);
+#endif
 	sdl_renderer = SDL_CreateRenderer(sdl_window, -1, 0);
+#if defined(SWITCH)
+	SDL_RenderSetLogicalSize(sdl_renderer, 1920, 1080);
+#else
 	SDL_RenderSetLogicalSize(sdl_renderer, WINDOWW, WINDOWH);
+#endif
 	if (forceIntegerScaling && fullscreen)
 		SDL_RenderSetIntegerScale(sdl_renderer, SDL_TRUE);
 	sdl_texture = SDL_CreateTexture(sdl_renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, WINDOWW, WINDOWH);
@@ -434,6 +450,39 @@ void EventProcess(SDL_Event event)
 		SDL_CaptureMouse(SDL_FALSE);
 #endif
 		break;
+#if SWITCH
+	case SDL_FINGERMOTION:
+		mousex = event.tfinger.x * WINDOWW;
+		mousey = event.tfinger.y * WINDOWH;
+		engine->onMouseMove(mousex, mousey);
+
+		hasMouseMoved = true;
+		break;
+	case SDL_FINGERDOWN:
+		// if mouse hasn't moved yet, sdl will send 0,0. We don't want that
+		if (hasMouseMoved)
+		{
+			mousex = event.tfinger.x * WINDOWW;
+			mousey = event.tfinger.y * WINDOWH;
+		}
+		mouseButton = SDL_BUTTON_LEFT;
+		engine->onMouseClick(event.tfinger.x * WINDOWW, event.tfinger.y * WINDOWH, mouseButton);
+
+		mouseDown = true;
+		break;
+	case SDL_FINGERUP:
+		// if mouse hasn't moved yet, sdl will send 0,0. We don't want that
+		if (hasMouseMoved)
+		{
+			mousex = event.tfinger.x * WINDOWW;
+			mousey = event.tfinger.y * WINDOWH;
+		}
+		mouseButton = SDL_BUTTON_LEFT; // TODO: Support right & middle click (by holding L/R?)
+		engine->onMouseUnclick(mousex, mousey, mouseButton);
+
+		mouseDown = false;
+		break;
+#endif
 	case SDL_WINDOWEVENT:
 	{
 		switch (event.window.event)
@@ -653,7 +702,7 @@ int main(int argc, char * argv[])
 	else
 		ChdirToDataDirectory();
 
-	scale = Client::Ref().GetPrefInteger("Scale", 1);
+	scale = Client::Ref().GetPrefInteger("Scale", 2);
 	resizable = Client::Ref().GetPrefBool("Resizable", false);
 	fullscreen = Client::Ref().GetPrefBool("Fullscreen", false);
 	altFullscreen = Client::Ref().GetPrefBool("AltFullscreen", false);
@@ -708,6 +757,7 @@ int main(int argc, char * argv[])
 		scale = 1;
 
 	SDLOpen();
+#if !defined(SWITCH)
 	// TODO: mabe make a nice loop that automagically finds the optimal scale
 	if (Client::Ref().IsFirstRun() && desktopWidth > WINDOWW*2+30 && desktopHeight > WINDOWH*2+30)
 	{
@@ -716,12 +766,13 @@ int main(int argc, char * argv[])
 		SDL_SetWindowSize(sdl_window, WINDOWW * 2, WINDOWH * 2);
 		showDoubleScreenDialog = true;
 	}
+#endif
 
 #ifdef OGLI
 	SDL_GL_SetAttribute (SDL_GL_DOUBLEBUFFER, 1);
 	//glScaled(2.0f, 2.0f, 1.0f);
 #endif
-#if defined(OGLI) && !defined(MACOSX)
+#if defined(OGLI) && !defined(MACOSX) && !defined(SWITCH)
 	int status = glewInit();
 	if(status != GLEW_OK)
 	{

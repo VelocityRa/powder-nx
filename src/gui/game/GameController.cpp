@@ -406,6 +406,7 @@ void GameController::Install()
 		virtual ~InstallConfirmation() { }
 	};
 	new ConfirmPrompt("Install The Powder Toy", "Do you wish to install The Powder Toy on this computer?\nThis allows you to open save files and saves directly from the website.", new InstallConfirmation(this));
+#elif defined (SWITCH) // Do nothing
 #else
 	new ErrorMessage("Cannot install", "You cannot install The Powder Toy on this platform");
 #endif

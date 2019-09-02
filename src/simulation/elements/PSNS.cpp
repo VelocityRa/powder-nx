@@ -89,7 +89,7 @@ int Element_PSNS::update(UPDATE_FUNC_ARGS)
 						ny = y + ry;
 						while (TYP(r) == PT_FILT)
 						{
-							parts[ID(r)].ctype = 0x10000000 + roundl(photonWl) + 256;
+							parts[ID(r)].ctype = 0x10000000 + round(photonWl) + 256;
 							nx += rx;
 							ny += ry;
 							if (nx < 0 || ny < 0 || nx >= XRES || ny >= YRES)

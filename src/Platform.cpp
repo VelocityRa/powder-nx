@@ -48,6 +48,10 @@ ByteString ExecutableName()
 		return "";
 	}
 	res = 1;
+#elif defined SWITCH
+	char *name = (char *)malloc(64);
+	strcpy(name, "tpt-switch");
+	size_t res = 1;
 #else
 	char fn[64], *name = (char *)malloc(64);
 	size_t max = 64, res;
@@ -56,7 +60,7 @@ ByteString ExecutableName()
 	while ((res = readlink(fn, name, max)) >= max-1)
 	{
 #endif
-#ifndef MACOSX
+#if !defined(MACOSX) && !defined(SWITCH)
 		max *= 2;
 		char* realloced_name = (char *)realloc(name, max);
 		assert(realloced_name != NULL);
