@@ -79,9 +79,11 @@ AddSconsOption('nofft', False, False, "Disable FFT.")
 AddSconsOption('nohttp', False, False, "Disable http requests and libcurl.")
 AddSconsOption("output", False, True, "Executable output name.")
 
-
 #detect platform automatically, but it can be overrided
+static = GetOption('static')
 tool = GetOption('tool')
+nofft = GetOption('nofft')
+nolua = GetOption('nolua')
 isX86 = platform.machine() in ["amd64", "AMD64", "i386", "i686", "x86", "x86_64"]
 platform = compilePlatform = platform.system()
 if GetOption('win'):
@@ -93,6 +95,10 @@ elif GetOption('mac'):
 elif GetOption('switch'):
 	platform = "Switch"
 	isX86 = False
+	static = True
+	nofft = True
+	nolua = True
+	tool = 'aarch64-none-elf-'
 elif compilePlatform not in ["Linux", "Windows", "Darwin", "FreeBSD", "Switch"]:
 	FatalError("Unknown platform: {0}".format(platform))
 
@@ -141,15 +147,6 @@ if platform == "Switch":
 	env['ENV']['PATH'] = updated_path
 	os.environ['PATH'] = updated_path  # os environment has to be updated for subprocess calls
 
-try:
-	env.ParseConfig('sdl2-config --cflags')
-	if GetOption('static'):
-		env.ParseConfig('sdl2-config --static-libs')
-	else:
-		env.ParseConfig('sdl2-config --libs')
-except:
-	pass
-
 #copy environment variables because scons doesn't do this by default
 for var in ["CC","CXX","LD","LIBPATH","STRIP"]:
 	if var in os.environ:
@@ -192,7 +189,7 @@ if GetOption('universal'):
 
 env.Append(CPPPATH=['src/', 'data/', 'generated/'])
 if GetOption("msvc"):
-	if GetOption("static"):
+	if static:
 		env.Append(LIBPATH=['StaticLibs/'])
 	else:
 		env.Append(LIBPATH=['Libraries/'])
@@ -246,7 +243,7 @@ def findLibs(env, conf):
 	if platform == "Windows":
 		if msvc:
 			libChecks = ['shell32', 'wsock32', 'user32', 'Advapi32', 'ws2_32', 'Wldap32', 'crypt32']
-			if GetOption('static'):
+			if static:
 				libChecks += ['imm32', 'version', 'Ole32', 'OleAut32']
 			for i in libChecks:
 				if not conf.CheckLib(i):
@@ -259,16 +256,16 @@ def findLibs(env, conf):
 			FatalError("libSDL2main not found or not installed")
 
 	#Look for SDL
-	runSdlConfig = platform == "Linux" or compilePlatform == "Linux" or platform == "FreeBSD"
+	runSdlConfig = platform == "Linux" or compilePlatform == "Linux" or platform == "FreeBSD" or platform == "Switch"
 	if platform == "Darwin" and conf.CheckFramework("SDL2"):
 		runSdlConfig = False
-	elif not conf.CheckLib("SDL2"):
+	elif not platform == "Switch" and not conf.CheckLib("SDL2"):
 		FatalError("SDL2 development library not found or not installed")
 
 	if runSdlConfig:
 		try:
 			env.ParseConfig('sdl2-config --cflags')
-			if GetOption('static'):
+			if static:
 				env.ParseConfig('sdl2-config --static-libs')
 			else:
 				env.ParseConfig('sdl2-config --libs')
@@ -281,7 +278,7 @@ def findLibs(env, conf):
 	elif not conf.CheckCHeader('SDL.h'):
 		FatalError("SDL.h not found")
 
-	if not GetOption('nolua') and not GetOption('renderer') and not GetOption('font'):
+	if not nolua and not GetOption('renderer') and not GetOption('font'):
 		#Look for Lua
 		if platform == "FreeBSD":
 			luaver = "lua-5.1"
@@ -333,7 +330,7 @@ def findLibs(env, conf):
 			conf.CheckLib('dl')
 
 	#Look for fftw
-	if not GetOption('nofft') and not GetOption('renderer') and not conf.CheckLib(['fftw3f', 'fftw3f-3', 'libfftw3f-3', 'libfftw3f']):
+	if not nofft and not GetOption('renderer') and not conf.CheckLib(['fftw3f', 'fftw3f-3', 'libfftw3f-3', 'libfftw3f']):
 			FatalError("fftw3f development library not found or not installed")
 
 	#Look for bz2
@@ -353,7 +350,7 @@ def findLibs(env, conf):
 		FatalError("libcurl not found or not installed")
 
 		if platform == "Linux" or compilePlatform == "Linux" or platform == "FreeBSD":
-			if GetOption('static'):
+			if static:
 				env.ParseConfig("curl-config --static-libs")
 			else:
 				env.ParseConfig("curl-config --libs")
@@ -438,7 +435,7 @@ if platform == "Windows":
 			env.Append(LINKFLAGS=['/SUBSYSTEM:WINDOWS,"5.01"'])
 		env.Append(LINKFLAGS=['/OPT:REF', '/OPT:ICF'])
 		env.Append(CPPDEFINES=['_SCL_SECURE_NO_WARNINGS']) #Disable warnings about 'std::print'
-		if GetOption('static'):
+		if static:
 			env.Append(LINKFLAGS=['/NODEFAULTLIB:msvcrt.lib', '/LTCG'])
 		elif not GetOption('debugging'):
 			env.Append(LINKFLAGS=['/NODEFAULTLIB:msvcrtd.lib'])
@@ -494,7 +491,7 @@ if GetOption('native') and not msvc:
 if GetOption('debugging'):
 	if msvc:
 		env.Append(CCFLAGS=['/Od'])
-		if GetOption('static'):
+		if static:
 			env.Append(CCFLAGS=['/MTd'])
 		else:
 			env.Append(CCFLAGS=['/MDd'])
@@ -505,7 +502,7 @@ elif GetOption('release'):
 	if msvc:
 		# Certain options (like /GL and /GS) cause TPT to be flagged as a virus. Don't include them
 		env.Append(CCFLAGS=['/O2', '/Oy-', '/fp:fast'])
-		if GetOption('static'):
+		if static:
 			env.Append(CCFLAGS=['/MT'])
 		else:
 			env.Append(CCFLAGS=['/MD'])
@@ -514,7 +511,7 @@ elif GetOption('release'):
 		if platform != "Darwin":
 			env.Append(CCFLAGS=['-funsafe-loop-optimizations'])
 
-if GetOption('static'):
+if static:
 	if platform == "Windows":
 		env.Append(CPPDEFINES=['CURL_STATICLIB'])
 		if compilePlatform == "Windows" and not msvc:
@@ -528,9 +525,9 @@ if GetOption('static'):
 
 
 #Add other flags and defines
-if not GetOption('nofft') and not GetOption('renderer'):
+if not nofft and not GetOption('renderer'):
 	env.Append(CPPDEFINES=['GRAVFFT'])
-if not GetOption('nolua') and not GetOption('renderer') and not GetOption('font'):
+if not nolua and not GetOption('renderer') and not GetOption('font'):
 	env.Append(CPPDEFINES=['LUACONSOLE'])
 if GetOption('nohttp') or GetOption('renderer'):
 	env.Append(CPPDEFINES=['NOHTTP'])
@@ -579,7 +576,7 @@ if GetOption('beta'):
 
 #Generate list of sources to compile
 sources = Glob("src/*.cpp") + Glob("src/*/*.cpp") + Glob("src/*/*/*.cpp") + Glob("generated/*.cpp") + Glob("data/*.cpp")
-if not GetOption('nolua') and not GetOption('renderer') and not GetOption('font'):
+if not nolua and not GetOption('renderer') and not GetOption('font'):
 	sources += Glob("src/lua/socket/*.c") + Glob("src/lua/LuaCompat.c")
 
 if platform == "Windows":
