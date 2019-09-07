@@ -1,0 +1,1 @@
+scons --switch -j5 $@
