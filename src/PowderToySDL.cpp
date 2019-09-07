@@ -147,7 +147,6 @@ void blit(pixel * vid)
 	// need to clear the renderer if there are black edges (fullscreen, or resizable window)
 	if (fullscreen || resizable)
 		SDL_RenderClear(sdl_renderer);
-	SDL_Rect srcrect{};
 	SDL_Rect dstrect{};
 	dstrect.w = 1920;
 	dstrect.h = 1080;
@@ -204,6 +203,15 @@ int SDLOpen()
 	SDL_SetWindowIcon(sdl_window, icon);
 	SDL_FreeSurface(icon);
 #endif
+
+#ifdef SWITCH
+	if (SDL_JoystickOpen(0) == NULL) {
+		SDL_Log("SDL_JoystickOpen: %s\n", SDL_GetError());
+		SDL_Quit();
+		return -1;
+	}
+#endif
+
 	atexit(SDL_Quit);
 
 	return 0;
@@ -365,16 +373,19 @@ int elapsedTime = 0, currentTime = 0, lastTime = 0, currentFrame = 0;
 unsigned int lastTick = 0;
 unsigned int lastFpsUpdate = 0;
 float fps = 0;
+GameController * g_gameController = NULL;
 ui::Engine * engine = NULL;
 bool showDoubleScreenDialog = false;
 float currentWidth, currentHeight;
 
 int mousex = 0, mousey = 0;
-int mouseButton = 0;
+int mouseButton = SDL_BUTTON_LEFT;
 bool mouseDown = false;
 
 bool calculatedInitialMouse = false, delay = false;
-bool hasMouseMoved = false;
+bool hasMouseMoved = true;
+
+// int mousedx=0, mousedy=0;
 
 void EventProcess(SDL_Event event)
 {
@@ -384,6 +395,164 @@ void EventProcess(SDL_Event event)
 		if (engine->GetFastQuit() || engine->CloseWindow())
 			engine->Exit();
 		break;
+#if defined(SWITCH)
+	case SDL_JOYBUTTONUP:
+	case SDL_JOYBUTTONDOWN: {
+		enum SwitchButton : uint32_t {
+			KEY_A, KEY_B, KEY_X, KEY_Y,
+			KEY_LSTICK, KEY_RSTICK,
+			KEY_L, KEY_R,
+			KEY_ZL, KEY_ZR,
+			KEY_PLUS, KEY_MINUS,
+			KEY_DLEFT, KEY_DUP, KEY_DRIGHT, KEY_DDOWN,
+			KEY_LSTICK_LEFT, KEY_LSTICK_UP, KEY_LSTICK_RIGHT, KEY_LSTICK_DOWN,
+			KEY_RSTICK_LEFT, KEY_RSTICK_UP, KEY_RSTICK_RIGHT, KEY_RSTICK_DOWN,
+			KEY_SL_LEFT, KEY_SR_LEFT, KEY_SL_RIGHT, KEY_SR_RIGHT
+		};
+
+		bool wasPressed = (event.type == SDL_JOYBUTTONDOWN);
+
+		bool repeat = false;
+		uint32_t sym{};
+		uint8_t scancode{};
+		uint32_t mod{};
+
+		bool emulateMouseEvent = false;
+
+		static int view_mode = 0;
+
+		enum class UpDownAction
+		{
+			ClipboardAction,
+			StampAction
+		};
+		static UpDownAction upDownAction = UpDownAction::ClipboardAction;
+
+		switch (event.jbutton.button)
+		{
+		// case KEY_A:
+		// 	mouseButton = SDL_BUTTON_LEFT;
+		// 	emulateMouseEvent = true;
+		// 	mouseDown = true;
+		// 	break;
+
+		// Change brush size
+		case KEY_L:
+		case KEY_R: {
+			if (!g_gameController)
+				return;
+			if (wasPressed)
+			{
+				if (event.jbutton.button == KEY_L)
+					g_gameController->brushResizeState = GameController::BrushResizeState::Decreasing;
+				else
+					g_gameController->brushResizeState = GameController::BrushResizeState::Increasing;
+			}
+			else
+			{
+				g_gameController->brushResizeState = GameController::BrushResizeState::None;
+			}
+			return;
+		}
+		// Change view mode
+		case KEY_ZR:
+		// case KEY_ZL:
+			// if (event.jbutton.button == KEY_ZL && view_mode-- < 0)
+			// 	view_mode = 9;
+			// if (event.jbutton.button == KEY_ZR && view_mode++ > 9)
+			if (view_mode++ > 9)
+				view_mode = 0;
+			switch (view_mode) {
+			case 0: sym = SDLK_0; break;
+			case 1: sym = SDLK_1; break;
+			case 2: sym = SDLK_2; break;
+			case 3: sym = SDLK_3; break;
+			case 4: sym = SDLK_4; break;
+			case 5: sym = SDLK_5; break;
+			case 6: sym = SDLK_6; break;
+			case 7: sym = SDLK_7; break;
+			case 8: sym = SDLK_8; break;
+			case 9: sym = SDLK_9; break;
+			}
+			break;
+		// Switch between circle/square/triangle brush
+		case KEY_X: sym = SDLK_TAB; scancode = SDL_SCANCODE_TAB; break;
+
+		// Zoom
+		case KEY_Y: sym = SDLK_z; scancode = SDL_SCANCODE_Z; break;
+
+		// Undo/Redo
+		case KEY_DLEFT: mod = KMOD_CTRL; sym = SDLK_z; scancode = SDL_SCANCODE_Z; break;
+		case KEY_DRIGHT: mod = KMOD_CTRL; sym = SDLK_y; scancode = SDL_SCANCODE_Y; break;
+
+		// Pause
+		case KEY_PLUS: sym = SDLK_SPACE; scancode = SDL_SCANCODE_SPACE; break;
+		// Show/Hide HUD
+		case KEY_MINUS: sym = SDLK_h; scancode = SDL_SCANCODE_H; break;
+
+		// Sample element
+		case KEY_LSTICK: mod = KMOD_ALT; break;
+		// Draw rectangle
+		case KEY_RSTICK: mod = KMOD_CTRL; break;
+
+		// Paint with secondary brush
+		case KEY_ZL:
+			if (wasPressed) {
+				mouseButton = SDL_BUTTON_LEFT;
+				engine->onMouseUnclick(mousex, mousey, SDL_BUTTON_LEFT);
+				engine->onMouseUnclick(mousex, mousey, SDL_BUTTON_RIGHT);
+			} else {
+				mouseButton = SDL_BUTTON_RIGHT;
+				engine->onMouseUnclick(mousex, mousey, SDL_BUTTON_LEFT);
+				engine->onMouseUnclick(mousex, mousey, SDL_BUTTON_RIGHT);
+			}
+			return;
+
+		// Copy/Paste or Save/Load stamp (based on Stamp Mod)
+		case KEY_DUP:
+			if (upDownAction == UpDownAction::ClipboardAction) {
+				mod = KMOD_CTRL;
+				sym = SDLK_c;
+				scancode = SDL_SCANCODE_C;
+			} else if (upDownAction == UpDownAction::StampAction) {
+				sym = SDLK_s; scancode = SDL_SCANCODE_S;
+			}
+			break;
+		case KEY_DDOWN:
+			if (upDownAction == UpDownAction::ClipboardAction) {
+				mod = KMOD_CTRL;
+				sym = SDLK_v;
+				scancode = SDL_SCANCODE_V;
+			} else if (upDownAction == UpDownAction::StampAction) {
+				sym = SDLK_k; scancode = SDL_SCANCODE_K;
+			}
+			break;
+		// Stamp Mod (see above)
+		case KEY_B:
+			if (wasPressed)
+				upDownAction = UpDownAction::StampAction;
+			else
+				upDownAction = UpDownAction::ClipboardAction;
+			return;
+		}
+
+		// Emulate event
+		if (emulateMouseEvent) {
+			if (wasPressed)
+				engine->onMouseClick(mousex, mousey, mouseButton);
+			else
+				engine->onMouseUnclick(mousex, mousey, mouseButton);
+		} else { // emulate keyboard event
+			if (wasPressed)
+				engine->onKeyPress(sym, scancode, repeat, mod&KMOD_SHIFT, mod&KMOD_CTRL, mod&KMOD_ALT);
+			else {
+				mod = 0;
+				engine->onKeyRelease(sym, scancode, repeat, mod&KMOD_SHIFT, mod&KMOD_CTRL, mod&KMOD_ALT);
+			}
+		}
+		break;
+	}
+#endif
 	case SDL_KEYDOWN:
 		if (!event.key.repeat && event.key.keysym.sym == 'q' && (event.key.keysym.mod&KMOD_CTRL))
 			engine->ConfirmExit();
@@ -450,7 +619,8 @@ void EventProcess(SDL_Event event)
 		SDL_CaptureMouse(SDL_FALSE);
 #endif
 		break;
-#if SWITCH
+
+#if defined(SWITCH)
 	case SDL_FINGERMOTION:
 		mousex = event.tfinger.x * WINDOWW;
 		mousey = event.tfinger.y * WINDOWH;
@@ -465,7 +635,6 @@ void EventProcess(SDL_Event event)
 			mousex = event.tfinger.x * WINDOWW;
 			mousey = event.tfinger.y * WINDOWH;
 		}
-		mouseButton = SDL_BUTTON_LEFT;
 		engine->onMouseClick(event.tfinger.x * WINDOWW, event.tfinger.y * WINDOWH, mouseButton);
 
 		mouseDown = true;
@@ -477,11 +646,22 @@ void EventProcess(SDL_Event event)
 			mousex = event.tfinger.x * WINDOWW;
 			mousey = event.tfinger.y * WINDOWH;
 		}
-		mouseButton = SDL_BUTTON_LEFT; // TODO: Support right & middle click (by holding L/R?)
 		engine->onMouseUnclick(mousex, mousey, mouseButton);
 
 		mouseDown = false;
 		break;
+	// case SDL_JOYAXISMOTION:
+	// 	// SDL_Log("Joystick %d axis %d value: %d\n",
+	// 	// 		event.jaxis.which,
+	// 	// 		event.jaxis.axis, event.jaxis.value);
+
+	// 	if (event.jaxis.axis == 0)
+	// 		mousedx = event.jaxis.value / 0xFFF;
+	// 	else
+	// 		mousedy = event.jaxis.value / 0xFFF;
+
+	// 	hasMouseMoved = true;
+	// 	break;
 #endif
 	case SDL_WINDOWEVENT:
 	{
@@ -527,6 +707,14 @@ void EventProcess(SDL_Event event)
 		break;
 	}
 	}
+
+// #if defined(SWITCH)
+// 	if (mouseDown) {
+// 		mousex += mousedx;
+// 		mousey += mousedy;
+// 		engine->onMouseMove(mousex, mousey);
+// 	}
+// #endif
 }
 
 void DoubleScreenDialog()
@@ -539,6 +727,15 @@ void DoubleScreenDialog()
 	{
 		Client::Ref().SetPref("Scale", 1);
 		engine->SetScale(1);
+	}
+}
+
+static void updateBrushSize() {
+	if (g_gameController) {
+		if (g_gameController->brushResizeState == GameController::BrushResizeState::Increasing)
+			g_gameController->AdjustBrushSize(1, false, false, false);
+		else if (g_gameController->brushResizeState == GameController::BrushResizeState::Decreasing)
+			g_gameController->AdjustBrushSize(-1, false, false, false);
 	}
 }
 
@@ -560,6 +757,8 @@ void EngineProcess()
 
 		engine->Tick();
 		engine->Draw();
+
+		updateBrushSize();
 
 		if (scale != engine->Scale || fullscreen != engine->Fullscreen ||
 				altFullscreen != engine->GetAltFullscreen() ||
@@ -814,6 +1013,7 @@ int main(int argc, char * argv[])
 
 #ifndef FONTEDITOR
 		gameController = new GameController();
+		g_gameController = gameController;
 		engine->ShowWindow(gameController->GetView());
 
 		if(arguments["open"].length())

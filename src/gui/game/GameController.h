@@ -178,6 +178,13 @@ public:
 	void NotifyNewNotification(Client * sender, std::pair<String, ByteString> notification) override;
 	void RunUpdater();
 	bool GetMouseClickRequired();
+
+	enum class BrushResizeState
+	{
+		None,
+		Increasing,
+		Decreasing
+	} brushResizeState = BrushResizeState::None;
 };
 
 #endif // GAMECONTROLLER_H
