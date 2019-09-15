@@ -237,7 +237,9 @@ void GameModel::BuildQuickOptionMenu(GameController * controller)
 	quickOptions.push_back(new DecorationsOption(this));
 	quickOptions.push_back(new NGravityOption(this));
 	quickOptions.push_back(new AHeatOption(this));
+#ifndef SWITCH
 	quickOptions.push_back(new ConsoleShowOption(this, controller));
+#endif
 
 	notifyQuickOptionsChanged();
 	UpdateQuickOptions();

@@ -462,6 +462,16 @@ GameView::GameView():
 	};
 	colourPicker = new ui::Button(ui::Point((XRES/2)-8, YRES+1), ui::Point(16, 16), "", "Pick Colour");
 	colourPicker->SetActionCallback(new ColourPickerAction(this));
+
+#ifdef SWITCH
+	searchButton->Enabled = false;
+	saveSimulationButton->Enabled = false;
+	upVoteButton->Enabled = false;
+	downVoteButton->Enabled = false;
+	tagSimulationButton->Enabled = false;
+	simulationOptionButton->Enabled = false;
+	loginButton->Enabled = false;
+#endif
 }
 
 GameView::~GameView()
