@@ -881,10 +881,33 @@ void ChdirToDataDirectory()
 #endif
 }
 
+#if !defined(NDEBUG) && defined(SWITCH)
+#define SWITCH_DEBUG
+#endif
+
+#ifdef SWITCH_DEBUG
+#include <string.h>
+#include <stdio.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <sys/errno.h>
+#include <unistd.h>
+#include <switch.h>
+#endif
+
 int main(int argc, char * argv[])
 {
 #if defined(_DEBUG) && defined(_MSC_VER)
 	_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_DEBUG);
+#endif
+
+#ifdef SWITCH_DEBUG
+    // Initialise sockets
+    socketInitializeDefault();
+
+    // redirect stdout & stderr over network to nxlink
+    nxlinkStdio();
+	setbuf(stdout, NULL);
 #endif
 	currentWidth = WINDOWW;
 	currentHeight = WINDOWH;
@@ -1123,6 +1146,11 @@ int main(int argc, char * argv[])
 	delete gameController;
 	delete ui::Engine::Ref().g;
 	Client::Ref().Shutdown();
+
+
+#ifdef SWITCH_DEBUG
+    socketExit();
+#endif
 	return 0;
 }
 
