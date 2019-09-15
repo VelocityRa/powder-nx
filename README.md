@@ -1,5 +1,6 @@
-The Powder Toy - Switch Port
-==========================
+# The Powder Toy - Switch Port
+
+![powder-nx](/resources/powder-nx.png "powder-nx")
 
 Have you ever wanted to blow something up? Or maybe you always dreamt of operating an atomic power plant? Do you have a will to develop your own CPU? The Powder Toy lets you to do all of these, and even more!
 
@@ -10,40 +11,7 @@ Get the latest version [from the releases GitHub page](https://github.com/Veloci
 The official website is [powdertoy.co.uk](https://powdertoy.co.uk).
 You can also visit [the official TPT forum](https://powdertoy.co.uk/Discussions/Categories/Index.html).
 
-Build instructions
-===========================================================================
-
-```bash
-./build.sh
-./nro.sh # if desired
-./nso.sh # if desired
-```
-
-Thanks
-===========================================================================
-
-* Stanislaw K Skowronek - Designed the original
-* Simon Robertshaw
-* Skresanov Savely
-* cracker64
-* Catelite
-* Bryan Hoyle
-* Nathan Cousins
-* jacksonmj
-* Felix Wallin
-* Lieuwe Mosch
-* Anthony Boot
-* Matthew "me4502"
-* MaksProg
-* jacob1
-* mniip
-* LBPHacker
-
-Swich Port by:
-* VelocityRa
-
-Instructions
-===========================================================================
+## Instructions
 
 Touch on the screen to draw like in MS Paint. Change materials from the icons in the sidebar and the bottom of the screen. The rest of the game is learning what happens next.
 
@@ -64,3 +32,43 @@ Controls
 | Right thumbstick press | Draw line (mapped to Shift) |
 | Up/Down Dpad | Copy/Paste Area |
 | A | Show intro text |
+
+## Missing features in Switch Port
+
+* Simulation Options
+* Stamps
+* Save Browser, saving & loading
+* Online functionality
+* Screenshots
+
+These might be worked on in later versions.
+
+## Build instructions
+
+```bash
+./build.sh
+./nro.sh # if desired
+./nso.sh # if desired
+```
+
+## Credits
+
+* Stanislaw K Skowronek - Designed the original
+* Simon Robertshaw
+* Skresanov Savely
+* cracker64
+* Catelite
+* Bryan Hoyle
+* Nathan Cousins
+* jacksonmj
+* Felix Wallin
+* Lieuwe Mosch
+* Anthony Boot
+* Matthew "me4502"
+* MaksProg
+* jacob1
+* mniip
+* LBPHacker
+
+Swich Port by:
+* VelocityRa
