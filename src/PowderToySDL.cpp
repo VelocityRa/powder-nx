@@ -522,7 +522,7 @@ void EventProcess(SDL_Event event)
 				sym = SDLK_c;
 				scancode = SDL_SCANCODE_C;
 			} else if (upDownAction == UpDownAction::StampAction) {
-				sym = SDLK_s; scancode = SDL_SCANCODE_S;
+				// sym = SDLK_s; scancode = SDL_SCANCODE_S;
 			}
 			break;
 		case KEY_DDOWN:
@@ -531,16 +531,16 @@ void EventProcess(SDL_Event event)
 				sym = SDLK_v;
 				scancode = SDL_SCANCODE_V;
 			} else if (upDownAction == UpDownAction::StampAction) {
-				sym = SDLK_k; scancode = SDL_SCANCODE_K;
+				// sym = SDLK_k; scancode = SDL_SCANCODE_K;
 			}
 			break;
 		// Stamp Mod (see above)
-		case KEY_B:
-			if (wasPressed)
-				upDownAction = UpDownAction::StampAction;
-			else
-				upDownAction = UpDownAction::ClipboardAction;
-			return;
+		// case KEY_B:
+		// 	if (wasPressed)
+		// 		upDownAction = UpDownAction::StampAction;
+		// 	else
+		// 		upDownAction = UpDownAction::ClipboardAction;
+		// 	return;
 		}
 
 		// Emulate event
