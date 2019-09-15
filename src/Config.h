@@ -68,6 +68,8 @@
 #endif
 #elif defined(MACOSX)
 #define IDENT_PLATFORM "MACOSX"
+#elif defined(SWITCH)
+#define IDENT_PLATFORM "SWITCH"
 #else
 #define IDENT_PLATFORM "UNKNOWN"
 #endif
