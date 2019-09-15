@@ -136,6 +136,7 @@ public:
 	ui::Point GetMousePosition();
 	void SetSample(SimulationSample sample);
 	void SetHudEnable(bool hudState);
+	void SetIntroText(int introText);
 	bool GetHudEnable();
 	void SetDebugHUD(bool mode);
 	bool GetDebugHUD();

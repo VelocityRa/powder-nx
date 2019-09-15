@@ -374,7 +374,8 @@ unsigned int lastTick = 0;
 unsigned int lastFpsUpdate = 0;
 float fps = 0;
 GameController * g_gameController = NULL;
-ui::Engine * engine = NULL;
+GameView *g_gameView;
+ui::Engine *engine = NULL;
 bool showDoubleScreenDialog = false;
 float currentWidth, currentHeight;
 
@@ -435,6 +436,12 @@ void EventProcess(SDL_Event event)
 		// 	emulateMouseEvent = true;
 		// 	mouseDown = true;
 		// 	break;
+		case KEY_A:
+			if (g_gameView && wasPressed) {
+				g_gameView->SetIntroText(4096);
+				return;
+			}
+			break;
 
 		// Change brush size
 		case KEY_L:
@@ -1045,6 +1052,8 @@ int main(int argc, char * argv[])
 		gameController = new GameController();
 		g_gameController = gameController;
 		engine->ShowWindow(gameController->GetView());
+
+		g_gameView = gameController->GetView();
 
 		if(arguments["open"].length())
 		{

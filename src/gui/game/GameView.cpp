@@ -194,7 +194,7 @@ GameView::GameView():
 	buttonTipShow(0),
 	buttonTip(""),
 	isButtonTipFadingIn(false),
-	introText(2048),
+	introText(4096),
 	introTextMessage(ByteString(introTextData).FromAscii()),
 
 	doScreenshot(false),
@@ -667,6 +667,11 @@ void GameView::SetSample(SimulationSample sample)
 void GameView::SetHudEnable(bool hudState)
 {
 	showHud = hudState;
+}
+
+void GameView::SetIntroText(int introText)
+{
+	this->introText = introText;
 }
 
 bool GameView::GetHudEnable()
@@ -2139,6 +2144,10 @@ void GameView::SetSaveButtonTooltips()
 
 void GameView::OnDraw()
 {
+#ifdef SWITCH
+	saveSimulationButton->Enabled = false;
+#endif
+
 	Graphics * g = GetGraphics();
 	if (ren)
 	{
