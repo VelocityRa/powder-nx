@@ -492,8 +492,8 @@ void EventProcess(SDL_Event event)
 
 		// Sample element
 		case KEY_LSTICK: mod = KMOD_ALT; break;
-		// Draw rectangle
-		case KEY_RSTICK: mod = KMOD_CTRL; break;
+		// Draw line
+		case KEY_RSTICK: mod = KMOD_SHIFT; break;
 
 		// Paint with secondary brush
 		case KEY_ZL:
@@ -636,6 +636,9 @@ void EventProcess(SDL_Event event)
 			mousey = event.tfinger.y * WINDOWH;
 		}
 		engine->onMouseClick(event.tfinger.x * WINDOWW, event.tfinger.y * WINDOWH, mouseButton);
+		engine->onMouseUnclick(event.tfinger.x * WINDOWW, event.tfinger.y * WINDOWH, mouseButton);
+
+		engine->onMouseClick(event.tfinger.x * WINDOWW, event.tfinger.y * WINDOWH, mouseButton);
 
 		mouseDown = true;
 		break;
@@ -648,6 +651,10 @@ void EventProcess(SDL_Event event)
 		}
 		engine->onMouseUnclick(mousex, mousey, mouseButton);
 
+		if (mousex > 611 || mousey > 384) {
+			engine->onMouseClick(mousex, mousey, mouseButton);
+			engine->onMouseUnclick(mousex, mousey, mouseButton);
+		}
 		mouseDown = false;
 		break;
 	// case SDL_JOYAXISMOTION:
